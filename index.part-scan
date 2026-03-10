@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PartScan — AI Part Comparator</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d0f0f;
+    --panel: #141717;
+    --border: #2a2f2f;
+    --accent: #00e5a0;
+    --accent2: #00b3ff;
+    --warn: #ff6b35;
+    --text: #d4dbd8;
+    --muted: #5a6663;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-body: 'Barlow', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+
+  .logo-mark {
+    width: 42px;
+    height: 42px;
+    border: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .logo-mark::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px solid var(--accent);
+    opacity: 0.4;
+  }
+  .logo-mark svg { width: 20px; height: 20px; fill: var(--accent); }
+
+  .logo-text {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    color: #fff;
+    letter-spacing: 2px;
+  }
+  .logo-text span { color: var(--accent); }
+
+  .logo-sub {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .status-pill {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 4px 12px;
+    letter-spacing: 1px;
+    animation: blink 2s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* API Key bar */
+  .api-bar {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .api-bar label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+  .api-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 4px 0;
+    outline: none;
+    letter-spacing: 1px;
+  }
+  .api-bar input:focus { border-bottom-color: var(--accent); }
+  .api-bar input::placeholder { color: var(--muted); }
+
+  /* Upload grid */
+  .upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+
+  .upload-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 0;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    aspect-ratio: 4/3;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .upload-panel:hover { border-color: var(--accent); }
+  .upload-panel.has-image { border-color: var(--accent); }
+
+  .panel-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.3);
+    position: relative;
+    z-index: 2;
+  }
+  .panel-label .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .upload-panel.has-image .panel-label .dot { background: var(--accent); }
+
+  .upload-inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    position: relative;
+  }
+
+  .upload-icon {
+    width: 36px; height: 36px;
+    opacity: 0.3;
+  }
+
+  .upload-hint {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  .upload-input { display: none; }
+
+  .preview-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 8px;
+  }
+
+  .clear-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    color: var(--warn);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    cursor: pointer;
+    z-index: 3;
+    display: none;
+    letter-spacing: 1px;
+  }
+  .upload-panel.has-image .clear-btn { display: block; }
+
+  /* VS divider */
+  .vs-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    width: 40px;
+    height: 40px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  .upload-wrapper {
+    position: relative;
+  }
+
+  /* Analyze button */
+  .analyze-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 3px;
+    padding: 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+    margin-bottom: 32px;
+    text-transform: uppercase;
+  }
+  .analyze-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+    z-index: 0;
+  }
+  .analyze-btn:hover::before { transform: translateX(0); }
+  .analyze-btn:hover { color: #000; }
+  .analyze-btn span { position: relative; z-index: 1; }
+  .analyze-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .analyze-btn:disabled::before { display: none; }
+
+  /* Loading */
+  .loading {
+    display: none;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    margin-bottom: 32px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+  .loading.visible { display: flex; }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Results */
+  .results {
+    display: none;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    animation: fadeIn 0.4s ease;
+  }
+  .results.visible { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .results-header {
+    background: rgba(0,229,160,0.07);
+    border-bottom: 1px solid var(--accent);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .results-header .tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+  .results-header .timestamp {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .results-body {
+    padding: 28px;
+  }
+
+  /* Match score */
+  .match-score-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .match-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+  .match-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    position: relative;
+  }
+  .match-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    width: 0%;
+    transition: width 1s ease;
+  }
+  .match-pct {
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+    min-width: 70px;
+    text-align: right;
+  }
+
+  /* Sections */
+  .result-section {
+    margin-bottom: 24px;
+  }
+  .result-section-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent2);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .result-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .result-text {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+    font-weight: 300;
+  }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .tag-item {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .tag-item.match { border-color: var(--accent); color: var(--accent); }
+  .tag-item.diff { border-color: var(--warn); color: var(--warn); }
+
+  /* Verdict */
+  .verdict-box {
+    background: rgba(0,229,160,0.05);
+    border: 1px solid var(--accent);
+    padding: 16px 20px;
+    margin-top: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .verdict-box.warn {
+    background: rgba(255,107,53,0.05);
+    border-color: var(--warn);
+  }
+  .verdict-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .verdict-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .verdict-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .verdict-box.warn .verdict-title { color: var(--warn); }
+
+  /* Error */
+  .error-box {
+    display: none;
+    background: rgba(255,107,53,0.07);
+    border: 1px solid var(--warn);
+    padding: 16px 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--warn);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+  .error-box.visible { display: block; }
+
+  @media (max-width: 600px) {
+    .upload-grid { grid-template-columns: 1fr; }
+    .vs-divider { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18L20 8.5v7l-8 4-8-4v-7l8-4.32z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">PART<span>SCAN</span></div>
+      <div class="logo-sub">AI Vision Comparator</div>
+    </div>
+    <div class="status-pill">SYSTEM ONLINE</div>
+  </header>
+
+  <div class="api-bar">
+    <label>API KEY //</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off"/>
+  </div>
+
+  <div class="upload-wrapper">
+    <div class="upload-grid">
+
+      <div class="upload-panel" id="panel-a" onclick="document.getElementById('input-a').click()">
+        <div class="panel-label"><span class="dot"></span>REF PART — KNOWN</div>
+        <div class="upload-inner" id="inner-a">
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="#00e5a0" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="1"/>
+            <path d="M3 9h18M9 21V9"/>
+          </svg>
+          <div class="upload-hint">Upload reference part photo</div>
+        </div>
+        <button class="clear-btn" onclick="clearPanel(event,'a')">✕ CLEAR</button>
+        <input type="file" id="input-a" class="upload-input" accept="image/*" onchange="handleFile(event,'a')"/>
+      </div>
+
+      <div class="upload-panel" id="panel-b" onclick="document.getElementById('input-b').click()">
+        <div class="panel-label"><span class="dot"></span>NEW PART — UNKNOWN</div>
+        <div class="upload-inner" id="inner-b">
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="#00e5a0" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="1"/>
+            <path d="M3 9h18M9 21V9"/>
+          </svg>
+          <div class="upload-hint">Upload part to identify</div>
+        </div>
+        <button class="clear-btn" onclick="clearPanel(event,'b')">✕ CLEAR</button>
+        <input type="file" id="input-b" class="upload-input" accept="image/*" onchange="handleFile(event,'b')"/>
+      </div>
+
+    </div>
+    <div class="vs-divider">VS</div>
+  </div>
+
+  <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()" disabled>
+    <span>⬡ &nbsp; RUN COMPARISON ANALYSIS</span>
+  </button>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span id="loadingMsg">INITIALIZING VISION ANALYSIS...</span>
+  </div>
+
+  <div class="results" id="results">
+    <div class="results-header">
+      <span class="tag">// ANALYSIS COMPLETE</span>
+      <span class="timestamp" id="timestamp"></span>
+    </div>
+    <div class="results-body" id="resultsBody"></div>
+  </div>
+
+</div>
+
+<script>
+  const images = { a: null, b: null };
+
+  function handleFile(e, slot) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      images[slot] = ev.target.result;
+      const panel = document.getElementById('panel-' + slot);
+      const inner = document.getElementById('inner-' + slot);
+      panel.classList.add('has-image');
+      // Remove old preview
+      const old = inner.querySelector('.preview-img');
+      if (old) old.remove();
+      const img = document.createElement('img');
+      img.className = 'preview-img';
+      img.src = ev.target.result;
+      inner.appendChild(img);
+      checkReady();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearPanel(e, slot) {
+    e.stopPropagation();
+    images[slot] = null;
+    const panel = document.getElementById('panel-' + slot);
+    const inner = document.getElementById('inner-' + slot);
+    panel.classList.remove('has-image');
+    const img = inner.querySelector('.preview-img');
+    if (img) img.remove();
+    document.getElementById('input-' + slot).value = '';
+    checkReady();
+  }
+
+  function checkReady() {
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = !(images.a && images.b);
+  }
+
+  function b64(dataUrl) {
+    return dataUrl.split(',')[1];
+  }
+  function mimeType(dataUrl) {
+    return dataUrl.split(';')[0].split(':')[1];
+  }
+
+  const loadingMsgs = [
+    'INITIALIZING VISION ANALYSIS...',
+    'PROCESSING PART GEOMETRY...',
+    'COMPARING STRUCTURAL FEATURES...',
+    'RUNNING SIMILARITY SCORING...',
+    'GENERATING REPORT...'
+  ];
+
+  async function runAnalysis() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    if (!apiKey) {
+      showError('API key required. Enter your Anthropic API key above.');
+      return;
+    }
+
+    const btn = document.getElementById('analyzeBtn');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+    const errorBox = document.getElementById('errorBox');
+
+    btn.disabled = true;
+    errorBox.classList.remove('visible');
+    results.classList.remove('visible');
+    loading.classList.add('visible');
+
+    // Cycle loading messages
+    let msgIdx = 0;
+    const msgEl = document.getElementById('loadingMsg');
+    const msgInterval = setInterval(() => {
+      msgIdx = (msgIdx + 1) % loadingMsgs.length;
+      msgEl.textContent = loadingMsgs[msgIdx];
+    }, 1800);
+
+    const prompt = `You are an expert industrial parts analyst at a manufacturing company. You are comparing two part images.
+
+IMAGE 1 = The REFERENCE part (known, on file)
+IMAGE 2 = The NEW part (being identified/compared)
+
+Analyze both images carefully and return a JSON object with EXACTLY this structure:
+{
+  "matchScore": <integer 0-100 representing how similar the parts appear>,
+  "partType": "<brief name of what type of part this appears to be>",
+  "similarities": ["<feature 1>", "<feature 2>", "<feature 3>"],
+  "differences": ["<difference 1>", "<difference 2>"],
+  "likely_same_part": <true or false>,
+  "condition_notes": "<brief note on part condition or quality if visible>",
+  "recommendation": "<one clear sentence recommending action: e.g. confirm match and proceed, flag for manual review, reject as incorrect part, etc.>",
+  "verdict": "<MATCH | LIKELY MATCH | UNCERTAIN | MISMATCH>"
+}
+
+Be specific and technical. Focus on geometry, shape, features, dimensions, markings, and material clues. Return only valid JSON, no extra text.`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mimeType(images.a), data: b64(images.a) } },
+              { type: 'image', source: { type: 'base64', media_type: mimeType(images.b), data: b64(images.b) } },
+              { type: 'text', text: prompt }
+            ]
+          }]
+        })
+      });
+
+      clearInterval(msgInterval);
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || 'API request failed');
+      }
+
+      const data = await response.json();
+      const raw = data.content.map(i => i.text || '').join('');
+      const clean = raw.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      renderResults(parsed);
+
+    } catch (err) {
+      clearInterval(msgInterval);
+      showError('ERROR: ' + err.message);
+      btn.disabled = false;
+    }
+
+    loading.classList.remove('visible');
+    btn.disabled = false;
+  }
+
+  function showError(msg) {
+    const errorBox = document.getElementById('errorBox');
+    errorBox.textContent = msg;
+    errorBox.classList.add('visible');
+  }
+
+  function renderResults(d) {
+    const body = document.getElementById('resultsBody');
+    const results = document.getElementById('results');
+
+    const verdictColors = {
+      'MATCH': '#00e5a0',
+      'LIKELY MATCH': '#00b3ff',
+      'UNCERTAIN': '#ffc107',
+      'MISMATCH': '#ff6b35'
+    };
+    const verdictColor = verdictColors[d.verdict] || '#00e5a0';
+    const isWarn = d.verdict === 'MISMATCH' || d.verdict === 'UNCERTAIN';
+
+    const simsHtml = (d.similarities || []).map(s =>
+      `<span class="tag-item match">${s}</span>`).join('');
+    const diffsHtml = (d.differences || []).map(s =>
+      `<span class="tag-item diff">${s}</span>`).join('');
+
+    body.innerHTML = `
+      <div class="match-score-row">
+        <span class="match-label">SIMILARITY SCORE</span>
+        <div class="match-bar-wrap">
+          <div class="match-bar-fill" id="matchBar" style="width:0%"></div>
+        </div>
+        <span class="match-pct" style="color:${verdictColor}">${d.matchScore}%</span>
+      </div>
+
+      <div class="result-section">
+        <div class="result-section-title">PART TYPE</div>
+        <div class="result-text">${d.partType || '—'}</div>
+      </div>
+
+      <div class="result-section">
+        <div class="result-section-title">MATCHING FEATURES</div>
+        <div class="tag-list">${simsHtml || '<span class="tag-item">None identified</span>'}</div>
+      </div>
+
+      <div class="result-section">
+        <div class="result-section-title">DIFFERENCES DETECTED</div>
+        <div class="tag-list">${diffsHtml || '<span class="tag-item match">No differences detected</span>'}</div>
+      </div>
+
+      ${d.condition_notes ? `
+      <div class="result-section">
+        <div class="result-section-title">CONDITION NOTES</div>
+        <div class="result-text">${d.condition_notes}</div>
+      </div>` : ''}
+
+      <div class="verdict-box ${isWarn ? 'warn' : ''}">
+        <div class="verdict-icon">${isWarn ? '⚠' : '✓'}</div>
+        <div>
+          <div class="verdict-title">${d.verdict}</div>
+          <div class="verdict-text">${d.recommendation}</div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('timestamp').textContent =
+      new Date().toLocaleTimeString('en-US', { hour12: false });
+
+    results.classList.add('visible');
+
+    // Animate bar
+    setTimeout(() => {
+      document.getElementById('matchBar').style.width = d.matchScore + '%';
+    }, 100);
+  }
+</script>
+</body>
+</html>

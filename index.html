@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PartScan — AI Manufacturing Intelligence</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header — matches original exactly -->
+  <header>
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18L20 8.5v7l-8 4-8-4v-7l8-4.32z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">PART<span>SCAN</span></div>
+      <div class="logo-sub">AI Manufacturing Intelligence</div>
+    </div>
+    <div class="status-pill" id="systemStatus">● SYSTEM ONLINE</div>
+  </header>
+
+  <!-- API Key Bar — matches original style -->
+  <div class="api-bar">
+    <label>API KEY //</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off"/>
+    <span class="api-status" id="apiStatus"></span>
+    <button onclick="app.saveApiKey()">SET KEY</button>
+  </div>
+
+  <!-- Tab Navigation -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-page="compare" onclick="app.navigate('compare')">⬡ COMPARE</button>
+    <button class="tab-btn" data-page="blueprint" onclick="app.navigate('blueprint')">◫ BLUEPRINT</button>
+    <button class="tab-btn" data-page="lookup" onclick="app.navigate('lookup')">◈ PART LOOKUP</button>
+    <button class="tab-btn" data-page="history" onclick="app.navigate('history')">◷ HISTORY</button>
+    <button class="tab-btn" data-page="export" onclick="app.navigate('export')">↗ EXPORT</button>
+  </nav>
+
+  <!-- Page: Part Comparison -->
+  <div class="page active" id="page-compare">
+    <div id="compare-root"></div>
+  </div>
+
+  <!-- Page: Blueprint Analysis -->
+  <div class="page" id="page-blueprint">
+    <div id="blueprint-root"></div>
+  </div>
+
+  <!-- Page: Part Lookup -->
+  <div class="page" id="page-lookup">
+    <div id="lookup-root"></div>
+  </div>
+
+  <!-- Page: Scan History -->
+  <div class="page" id="page-history">
+    <div id="history-root"></div>
+  </div>
+
+  <!-- Page: Export -->
+  <div class="page" id="page-export">
+    <div id="export-root"></div>
+  </div>
+
+</div>
+
+<!-- JS Modules (order matters — app.js must load first) -->
+<script src="js/app.js"></script>
+<script src="js/compare.js"></script>
+<script src="js/blueprint.js"></script>
+<script src="js/lookup.js"></script>
+<script src="js/history.js"></script>
+<script src="js/export.js"></script>
+
+</body>
+</html>
